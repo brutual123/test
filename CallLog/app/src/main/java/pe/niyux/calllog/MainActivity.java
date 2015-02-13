@@ -9,6 +9,7 @@ import java.util.Date;
 
 import android.app.Activity;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.CallLog;
@@ -18,6 +19,16 @@ import android.widget.TextView;
 public class MainActivity extends Activity {
 
 	private static final String TAG = "MainActivity";
+
+    private static final String SMS_CONVERSATIONS = "content://sms/conversations";
+    private static final String SMS_INBOX = "content://sms/inbox";
+   private static final String SMS_FAILED = "content://sms/failed";
+   private static final String SMS_QUEUED = "content://sms/queued";
+   private static final String SMS_SENT = "content://sms/sent";
+   private static final String SMS_DRAFT = "content://sms/draft";
+   private static final String SMS_OUTBOX = "content://sms/outbox";
+   private static final String SMS_UNDELIVERED = "content://sms/undelivered";
+   private static final String SMS_ALL = "content://sms/all";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -42,14 +53,15 @@ public class MainActivity extends Activity {
 			File fileName = Environment.getExternalStorageDirectory();
 			// File file2 = new File(file, "calllog.txt");
 			// File dir = getExternalFilesDir(null);
-			File file2 = new File(fileName, "calllog.txt");
+			File file2 = new File(fileName, "smslog_all.txt");
 			FileOutputStream fos;
 			try {
 				file2.createNewFile();
 				Log.d(TAG, file2.getAbsolutePath());
 				fos = new FileOutputStream(file2);
 				OutputStreamWriter osw = new OutputStreamWriter(fos);
-				getCallDetails(osw);
+				//getCallDetails(osw);
+                getSmsDetails(osw, SMS_ALL);
 
 				osw.close();
 				fos.close();
@@ -58,7 +70,9 @@ public class MainActivity extends Activity {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			txtOutput.setText(getCallDetails());
+            Log.d(TAG, "¿Hola que hace?");
+//			txtOutput.setText(getCallDetails());
+//          txtOutput.setText(getSmsDetails());
 		} else {
 			txtOutput.setText("not writeable");
 		}
@@ -203,4 +217,58 @@ public class MainActivity extends Activity {
 		return sb.toString();
 
 	}
+
+    private String getSmsDetails(OutputStreamWriter osw, String content) throws IOException {
+        final String SEPARATOR = "|";
+       // Cursor cursor = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, null);
+        Cursor managedCursor = managedQuery(Uri.parse(content), null, null, null, null);
+        String[] columnNames = managedCursor.getColumnNames();
+        osw.append("getColumnCount:" + managedCursor.getColumnCount() + "\n");
+
+        for (String s : managedCursor.getColumnNames()) {
+            osw.append(s);
+            osw.append(SEPARATOR);
+        }
+
+        osw.append("\n");
+        while(managedCursor.moveToNext()){
+            for(String s : columnNames){
+                int index = managedCursor.getColumnIndex(s);
+                int cursorType = managedCursor.getType(index);
+                switch (cursorType) {
+                    case Cursor.FIELD_TYPE_STRING:
+                       // Log.d(TAG, s+ " is type: STRING");
+                        String string = managedCursor.getString(index);
+                        string = string.replace("\n", "");
+                        osw.append(string);
+                        break;
+                    case Cursor.FIELD_TYPE_INTEGER:
+                        //Log.d(TAG, s+ " is type: INTEGER");
+                        osw.append(String.valueOf(managedCursor.getInt(index)));
+                        break;
+                    case Cursor.FIELD_TYPE_FLOAT:
+                        //Log.d(TAG, s+ " is type: FLOAT");
+                        osw.append(String.valueOf(managedCursor.getFloat(index)));
+                        break;
+                    case Cursor.FIELD_TYPE_NULL:
+                        //Log.d(TAG, s+ " is type: NULL");
+                        osw.append(null);
+                        break;
+                    case Cursor.FIELD_TYPE_BLOB:
+                        //Log.d(TAG, s+ " is type: BLOB");
+                        osw.append(new String(managedCursor.getBlob(index)));
+                        break;
+                    default:
+                       // Log.d(TAG, s+ " is type: NOT EXPECTED");
+                        osw.append("NOT EXPECTED");
+                        break;
+                }
+                osw.append(SEPARATOR);
+            }
+            osw.append("\n");
+        }
+        managedCursor.close();
+        Log.d(TAG, "FINISHED!");
+        return osw.toString();
+    }
 }
